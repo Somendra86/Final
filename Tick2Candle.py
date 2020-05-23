@@ -4,6 +4,7 @@ import pandas as pd
 import os
 import time
 from datetime import datetime
+import datetime
 import functions
 import Connection as con
 import sys
@@ -53,10 +54,14 @@ def on_connect(ws, response):
 
 while True:
     now = datetime.datetime.now()
-    if (now.hour >= 9 and now.minute >= 15 ):
+    if (now.hour >= 9 and now.minute >= 15 and not now.weekday() in (5,6)):
         kws.on_ticks=on_ticks
         kws.on_connect=on_connect
         kws.connect()
-    if (now.hour >= 15 and now.minute >= 29):
-        sys.exit()
+    if (not now.weekday() in (5,6)):    
+        if (now.hour >= 15 and now.minute >= 29 ):
+            sys.exit()
+    else:
+        print("Weekend or Holiday")    
+        sys.exit()              
 con.sqlit.close()
