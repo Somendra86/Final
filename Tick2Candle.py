@@ -57,7 +57,6 @@ while True:
         kws.on_ticks=on_ticks
         kws.on_connect=on_connect
         kws.connect()
-    if (now.hour >= 15 and now.minute >= 30):
+    if (now.hour >= 15 and now.minute >= 29):
         sys.exit()
-
 con.sqlit.close()
