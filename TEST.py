@@ -18,10 +18,3 @@ key_secret = open("api_key.txt",'r').read().split()
 kite = KiteConnect(api_key=key_secret[0])
 kite.set_access_token(access_token)
 kws = KiteTicker(key_secret[0],access_token)
-
-holdings = pd.DataFrame(kite.holdings())
-# print(kite.holdings())
-# print(holdings)
-# print(holdings['tradingsymbol'] == 'IDEA')
-
-print(holdings.loc[(holdings['tradingsymbol'] == 'IDEA') & (holdings['isin'].isin(["INE669E01016"]))]["instrument_token"])

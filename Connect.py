@@ -9,7 +9,6 @@ from selenium import webdriver
 import time
 import os
 
-
 cwd = os.chdir("F:/Final/")
 def autologin():
     token_path = "api_key.txt"

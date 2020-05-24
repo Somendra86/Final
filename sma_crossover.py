@@ -11,6 +11,7 @@ import sys
 import functions as fn
 import Connection as con
 from datetime import datetime 
+import datetime
 global tickers
 cursor = con.sqlit.cursor()
 
@@ -43,59 +44,57 @@ def main():
         except:
             print("can't extract order data..retrying")
             b+=1
-
     for ticker in tickers:
         print("starting passthrough for....."+ticker)
         try:
             ohlc = fn.fetchOHLC(ticker,interval)
             signal=fn.EmaCrossOver(ohlc)
-            if len(pos_df.columns)==0:
-                if signal =="Buy":
-                    executed.append(ticker)
-                    quantity=fn.tradeQuantity(ticker,capitalPerStock,ohlc["close"][-2])
-                    atr = atr(ohlc,14)
-                    fn.placeBracketOrder(ticker,signal,quantity,atr,ohlc["close"][-2])
-                if signal =="Sell": 
-                    executed.append(ticker) 
-                    quantity=fn.tradeQuantity(ticker,capitalPerStock,ohlc["close"][-2])
-                    atr = atr(ohlc,14)
-                    fn.placeBracketOrder(ticker,signal,quantity,atr,ohlc["close"][-2]) 
+            print("Signal "+ signal + " raise at -"+ str(ohlc.index[-1]))
+            # if len(pos_df.columns)==0:
+            #     if signal =="Buy":
+            #         executed.append(ticker)
+            #         quantity=fn.tradeQuantity(ticker,capitalPerStock,ohlc["close"][-2])
+            #         atr = atr(ohlc,14)
+            #         fn.placeBracketOrder(ticker,signal,quantity,atr,ohlc["close"][-2])
+            #     if signal =="Sell": 
+            #         executed.append(ticker) 
+            #         quantity=fn.tradeQuantity(ticker,capitalPerStock,ohlc["close"][-2])
+            #         atr = atr(ohlc,14)
+            #         fn.placeBracketOrder(ticker,signal,quantity,atr,ohlc["close"][-2]) 
 
-            if len(pos_df.columns)!=0 and ticker not in pos_df["tradingsymbol"].tolist():
-                if signal =="Buy":
-                    executed.append(ticker)
-                    quantity=fn.tradeQuantity(ticker,capitalPerStock,ohlc["close"][-2])
-                    atr = atr(ohlc,14)
-                    fn.placeBracketOrder(ticker,signal,quantity,atr,ohlc["close"][-2])
-                if signal =="Sell": 
-                    executed.append(ticker) 
-                    quantity=fn.tradeQuantity(ticker,capitalPerStock,ohlc["close"][-2])
-                    atr = atr(ohlc,14)
-                    fn.placeBracketOrder(ticker,signal,quantity,atr,ohlc["close"][-2]) 
+            # if len(pos_df.columns)!=0 and ticker not in pos_df["tradingsymbol"].tolist():
+            #     if signal =="Buy":
+            #         executed.append(ticker)
+            #         quantity=fn.tradeQuantity(ticker,capitalPerStock,ohlc["close"][-2])
+            #         atr = atr(ohlc,14)
+            #         fn.placeBracketOrder(ticker,signal,quantity,atr,ohlc["close"][-2])
+            #     if signal =="Sell": 
+            #         executed.append(ticker) 
+            #         quantity=fn.tradeQuantity(ticker,capitalPerStock,ohlc["close"][-2])
+            #         atr = atr(ohlc,14)
+            #         fn.placeBracketOrder(ticker,signal,quantity,atr,ohlc["close"][-2]) 
 
-             if len(pos_df.columns)!=0 and ticker in pos_df["tradingsymbol"].tolist():  
-                 if pos_df[pos_df["tradingsymbol"]==ticker]["quantity"].values[0] == 0:
-                     if signal =="Buy":
-                        executed.append(ticker)
-                        quantity=fn.tradeQuantity(ticker,capitalPerStock,ohlc["close"][-2])
-                        atr = atr(ohlc,14)
-                        fn.placeBracketOrder(ticker,signal,quantity,atr,ohlc["close"][-2])
-                    if signal =="Sell": 
-                        executed.append(ticker) 
-                        quantity=fn.tradeQuantity(ticker,capitalPerStock,ohlc["close"][-2])
-                        atr = atr(ohlc,14)
-                        fn.placeBracketOrder(ticker,signal,quantity,atr,ohlc["close"][-2]) 
+            #  if len(pos_df.columns)!=0 and ticker in pos_df["tradingsymbol"].tolist():  
+            #      if pos_df[pos_df["tradingsymbol"]==ticker]["quantity"].values[0] == 0:
+            #          if signal =="Buy":
+            #             executed.append(ticker)
+            #             quantity=fn.tradeQuantity(ticker,capitalPerStock,ohlc["close"][-2])
+            #             atr = atr(ohlc,14)
+            #             fn.placeBracketOrder(ticker,signal,quantity,atr,ohlc["close"][-2])
+            #         if signal =="Sell": 
+            #             executed.append(ticker) 
+            #             quantity=fn.tradeQuantity(ticker,capitalPerStock,ohlc["close"][-2])
+            #             atr = atr(ohlc,14)
+            #             fn.placeBracketOrder(ticker,signal,quantity,atr,ohlc["close"][-2]) 
                      
-
-
         except Exception as e:
             print("API error for ticker :",ticker)
             print("Signal functon failed at -"+ str(ohlc.index[-1]) +" - "+ e)
 
 while True:
     now = datetime.datetime.now()
-    isholiday = fn.isholiday(date)
-    if (now.hour >= 9 and now.minute >= 15 and not now.weekday() in (5,6) and isholiday = "False"):
+    isholiday = fn.isholiday(now)
+    if (now.hour >= 9 and now.minute >= 15 and not now.weekday() in (5,6) and isholiday=="False"):
         try:
             print("passthrough at " +time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
             main()
@@ -103,7 +102,7 @@ while True:
         except KeyboardInterrupt:
             print('\n\nKeyboard exception received. Exiting.')
             exit()
-    if (not now.weekday() in (5,6) and isisholiday = "False"):    
+    if (not now.weekday() in (5,6) and isholiday == "False"):    
         if (now.hour >= 15 and now.minute >= 29 ):        
             sys.exit()  
     else:

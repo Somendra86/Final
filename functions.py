@@ -15,6 +15,8 @@ kite.set_access_token(access_token)
 upward_sma_dir = False
 downward_sma_dir = False
 signal = []
+st_dir = '' 
+atr = 0.0
 """ get margin for individual stock given by broker"""
 def getMargin(ticker):
         try:
@@ -65,6 +67,16 @@ def RSI(DF,n):
     df = df.drop(columns=['delta','gain','loss','avg_gain','avg_loss','RS'] , axis = 1)
     return df
 
+def atr(DF,n):
+    "function to calculate True Range and Average True Range"
+    df = DF.copy()
+    df['H-L']=abs(df['high']-df['low'])
+    df['H-PC']=abs(df['high']-df['close'].shift(1))
+    df['L-PC']=abs(df['low']-df['close'].shift(1))
+    df['TR']=df[['H-L','H-PC','L-PC']].max(axis=1,skipna=False)
+    df['ATR'] = df['TR'].ewm(com=n,min_periods=n).mean()
+    return df['ATR'][-1]    
+
 def fetchOHLC(ticker,interval):
     """extracts historical data and outputs in the form of dataframe"""
     instrument = getInstrumentNum(ticker)
@@ -95,26 +107,31 @@ def EmaCrossOver(ohlc):
     global upward_sma_dir
     global downward_sma_dir
     global signal
+    global atr
     ohlc = RSI(ohlc,14)
+    atr  = atr(ohlc,14)
     ohlc["5EMA"]=round(ohlc["close"].ewm(span=5,min_periods=5).mean(),2)
     ohlc["10EMA"]=round(ohlc["close"].ewm(span=10,min_periods=10).mean(),2)
-    ohlc = ohlc.loc[:,["open","high","low","close","RSI","5EMA","10EMA","last_price","instrument_token"]]
-    if ohlc["5EMA"].iloc[-2] > ohlc['10EMA'].iloc[-2] and ohlc["5EMA"].iloc[-3] < ohlc['10EMA'].iloc[-3] and (ohlc["RSI"].iloc[-2]>55 and ohlc["last_price"].iloc[-1] > ohlc["average_price"].iloc[-1]):
-        upward_sma_dir = 'True'
-        downward_sma_dir = 'False'
-    if ohlc["5EMA"].iloc[-2] < ohlc['10EMA'].iloc[-2] and ohlc["5EMA"].iloc[-3] > ohlc['10EMA'].iloc[-3] and (ohlc["RSI"].iloc[-2]<47 and ohlc["last_price"].iloc[-1] < ohlc["average_price"].iloc[-1]):
-        upward_sma_dir= 'False'
-        downward_sma_dir = 'True'  
-    if upward_sma_dir == 'True':
-        qry = "insert into Signal(Instrument,Signal,Time,BuyAt,Target) values(?,?,?,?,?);"
-        cursor.execute(qry ,(int(ohlc["instrument_token"].iloc[-1]),"BUY",datetime.strptime(str(ohlc.index[-1]),'%Y-%m-%d %H:%M:%S'),ohlc["close"].iloc[-1],ohlc["close"].iloc[-1]+2))
-        con.sqlit.commit()
-        signal = 'Buy'
-    if downward_sma_dir == 'True':
-        qry = "insert into Signal(Instrument,Signal,Time,BuyAt,Target) values(?,?,?,?,?);"
-        cursor.execute(qry ,(int(ohlc["instrument_token"].iloc[-1]),"SELL",datetime.strptime(str(ohlc.index[-1]), '%Y-%m-%d %H:%M:%S'),ohlc["close"].iloc[-1],ohlc["close"].iloc[-1]-2))
-        con.sqlit.commit() 
-        signal = 'Sell'
+    ohlc = ohlc.loc[:,["open","high","low","close","RSI","5EMA","10EMA","last_price","instrument_token","average_price"]]
+    try:
+        if ohlc["5EMA"].iloc[-2] > ohlc['10EMA'].iloc[-2] and ohlc["5EMA"].iloc[-3] < ohlc['10EMA'].iloc[-3] and (ohlc["RSI"].iloc[-2]>55 and ohlc["last_price"].iloc[-1] > ohlc["average_price"].iloc[-1]):
+            upward_sma_dir = 'True'
+            downward_sma_dir = 'False'
+        if ohlc["5EMA"].iloc[-2] < ohlc['10EMA'].iloc[-2] and ohlc["5EMA"].iloc[-3] > ohlc['10EMA'].iloc[-3] and (ohlc["RSI"].iloc[-2]<47 and ohlc["last_price"].iloc[-1] < ohlc["average_price"].iloc[-1]):
+            upward_sma_dir= 'False'
+            downward_sma_dir = 'True'  
+        if upward_sma_dir == 'True':
+            qry = "insert into Signal(Instrument,Signal,Time,BuyAt,Target) values(?,?,?,?,?);"
+            cursor.execute(qry ,(int(ohlc["instrument_token"].iloc[-1]),"BUY",datetime.strptime(str(ohlc.index[-1]),'%Y-%m-%d %H:%M:%S'),ohlc["close"].iloc[-1],ohlc["close"].iloc[-1]+(atr*1.5)))
+            con.sqlit.commit()
+            signal = 'Buy'
+        if downward_sma_dir == 'True':
+            qry = "insert into Signal(Instrument,Signal,Time,BuyAt,Target) values(?,?,?,?,?);"
+            cursor.execute(qry ,(int(ohlc["instrument_token"].iloc[-1]),"SELL",datetime.strptime(str(ohlc.index[-1]), '%Y-%m-%d %H:%M:%S'),ohlc["close"].iloc[-1],ohlc["close"].iloc[-1]-(atr*1.5)))
+            con.sqlit.commit() 
+            signal = 'Sell'
+    except:
+            pass    
     return  signal  
 
 def isholiday(date):
@@ -143,15 +160,85 @@ def placeBracketOrder(symbol,buy_sell,quantity,atr,price):
                     stoploss=int(3*atr), 
                     trailing_stoploss=1.5)
 
-def atr(DF,n):
-    "function to calculate True Range and Average True Range"
-    df = DF.copy()
-    df['H-L']=abs(df['high']-df['low'])
-    df['H-PC']=abs(df['high']-df['close'].shift(1))
-    df['L-PC']=abs(df['low']-df['close'].shift(1))
-    df['TR']=df[['H-L','H-PC','L-PC']].max(axis=1,skipna=False)
-    df['ATR'] = df['TR'].ewm(com=n,min_periods=n).mean()
-    return df['ATR'][-1]
 
-    
+
+def supertrend(DF,n,m):
+    """function to calculate Supertrend given historical candle data
+        n = n day ATR - usually 7 day ATR is used
+        m = multiplier - usually 2 or 3 is used"""
+    df = DF.copy()
+    df['ATR'] = atr(df,n)
+    df["B-U"]=((df['high']+df['low'])/2) + m*df['ATR'] 
+    df["B-L"]=((df['high']+df['low'])/2) - m*df['ATR']
+    df["U-B"]=df["B-U"]
+    df["L-B"]=df["B-L"]
+    ind = df.index
+    for i in range(n,len(df)):
+        if df['close'][i-1]<=df['U-B'][i-1]:
+            df.loc[ind[i],'U-B']=min(df['B-U'][i],df['U-B'][i-1])
+        else:
+            df.loc[ind[i],'U-B']=df['B-U'][i]    
+    for i in range(n,len(df)):
+        if df['close'][i-1]>=df['L-B'][i-1]:
+            df.loc[ind[i],'L-B']=max(df['B-L'][i],df['L-B'][i-1])
+        else:
+            df.loc[ind[i],'L-B']=df['B-L'][i]  
+    df['Strend']=np.nan
+    for test in range(n,len(df)):
+        if df['close'][test-1]<=df['U-B'][test-1] and df['close'][test]>df['U-B'][test]:
+            df.loc[ind[test],'Strend']=df['L-B'][test]
+            break
+        if df['close'][test-1]>=df['L-B'][test-1] and df['close'][test]<df['L-B'][test]:
+            df.loc[ind[test],'Strend']=df['U-B'][test]
+            break
+    for i in range(test+1,len(df)):
+        if df['Strend'][i-1]==df['U-B'][i-1] and df['close'][i]<=df['U-B'][i]:
+            df.loc[ind[i],'Strend']=df['U-B'][i]
+        elif  df['Strend'][i-1]==df['U-B'][i-1] and df['close'][i]>=df['U-B'][i]:
+            df.loc[ind[i],'Strend']=df['L-B'][i]
+        elif df['Strend'][i-1]==df['L-B'][i-1] and df['close'][i]>=df['L-B'][i]:
+            df.loc[ind[i],'Strend']=df['L-B'][i]
+        elif df['Strend'][i-1]==df['L-B'][i-1] and df['close'][i]<=df['L-B'][i]:
+            df.loc[ind[i],'Strend']=df['U-B'][i]
+    return df['Strend']
+
+def st_dir_refresh(ohlc):
+    """function to check for supertrend reversal"""
+    global st_dir
+    if ohlc["st1"][-1] > ohlc["close"][-1] and ohlc["st1"][-2] < ohlc["close"][-2]:
+        st_dir = "red"
+    if ohlc["st1"][-1] < ohlc["close"][-1] and ohlc["st1"][-2] > ohlc["close"][-2]:
+        st_dir = "green"
+    return st_dir        
+
+def SuperTrendRSI(ohlc):
+    print("Signal functon run at -"+ str(ohlc.index[-1]))
+    global upward_sma_dir
+    global downward_sma_dir
+    global signal
+    global st_dir
+    global atr
+    ohlc = RSI(ohlc,14)
+    atr  = atr(ohlc,14)
+    ohlc["st1"]  = supertrend(ohlc,11,2)
+    st_dir_refresh(ohlc)
+    ohlc = ohlc.loc[:,["open","high","low","close","RSI","5EMA","10EMA","last_price","instrument_token","average_price"]]
+    if st_dir == 'green' and ohlc["RSI"].iloc[-2]>55 and ohlc["last_price"].iloc[-1] > ohlc["average_price"].iloc[-1]:
+        upward_sma_dir = 'True'
+        downward_sma_dir = 'False'
+    if st_dir == 'red' and (ohlc["RSI"].iloc[-2]<47 and ohlc["last_price"].iloc[-1] < ohlc["average_price"].iloc[-1]):
+        upward_sma_dir= 'False'
+        downward_sma_dir = 'True'  
+    if upward_sma_dir == 'True':
+        qry = "insert into Signal(Instrument,Signal,Time,BuyAt,Target) values(?,?,?,?,?);"
+        cursor.execute(qry ,(int(ohlc["instrument_token"].iloc[-1]),"BUY",datetime.strptime(str(ohlc.index[-1]),'%Y-%m-%d %H:%M:%S'),ohlc["close"].iloc[-1],ohlc["close"].iloc[-1]+(atr*1.5)))
+        con.sqlit.commit()
+        signal = 'Buy'
+    if downward_sma_dir == 'True':
+        qry = "insert into Signal(Instrument,Signal,Time,BuyAt,Target) values(?,?,?,?,?);"
+        cursor.execute(qry ,(int(ohlc["instrument_token"].iloc[-1]),"SELL",datetime.strptime(str(ohlc.index[-1]), '%Y-%m-%d %H:%M:%S'),ohlc["close"].iloc[-1],ohlc["close"].iloc[-1]-(atr*1.5)))
+        con.sqlit.commit() 
+        signal = 'Sell'
+    return  signal 
+
 
