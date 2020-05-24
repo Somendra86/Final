@@ -223,22 +223,25 @@ def SuperTrendRSI(ohlc):
     ohlc["st1"]  = supertrend(ohlc,11,2)
     st_dir_refresh(ohlc)
     ohlc = ohlc.loc[:,["open","high","low","close","RSI","5EMA","10EMA","last_price","instrument_token","average_price"]]
-    if st_dir == 'green' and ohlc["RSI"].iloc[-2]>55 and ohlc["last_price"].iloc[-1] > ohlc["average_price"].iloc[-1]:
-        upward_sma_dir = 'True'
-        downward_sma_dir = 'False'
-    if st_dir == 'red' and (ohlc["RSI"].iloc[-2]<47 and ohlc["last_price"].iloc[-1] < ohlc["average_price"].iloc[-1]):
-        upward_sma_dir= 'False'
-        downward_sma_dir = 'True'  
-    if upward_sma_dir == 'True':
-        qry = "insert into Signal(Instrument,Signal,Time,BuyAt,Target) values(?,?,?,?,?);"
-        cursor.execute(qry ,(int(ohlc["instrument_token"].iloc[-1]),"BUY",datetime.strptime(str(ohlc.index[-1]),'%Y-%m-%d %H:%M:%S'),ohlc["close"].iloc[-1],ohlc["close"].iloc[-1]+(atr*1.5)))
-        con.sqlit.commit()
-        signal = 'Buy'
-    if downward_sma_dir == 'True':
-        qry = "insert into Signal(Instrument,Signal,Time,BuyAt,Target) values(?,?,?,?,?);"
-        cursor.execute(qry ,(int(ohlc["instrument_token"].iloc[-1]),"SELL",datetime.strptime(str(ohlc.index[-1]), '%Y-%m-%d %H:%M:%S'),ohlc["close"].iloc[-1],ohlc["close"].iloc[-1]-(atr*1.5)))
-        con.sqlit.commit() 
-        signal = 'Sell'
+    try:
+        if st_dir == 'green' and ohlc["RSI"].iloc[-2]>55 and ohlc["last_price"].iloc[-1] > ohlc["average_price"].iloc[-1]:
+            upward_sma_dir = 'True'
+            downward_sma_dir = 'False'
+        if st_dir == 'red' and (ohlc["RSI"].iloc[-2]<47 and ohlc["last_price"].iloc[-1] < ohlc["average_price"].iloc[-1]):
+            upward_sma_dir= 'False'
+            downward_sma_dir = 'True'  
+        if upward_sma_dir == 'True':
+            qry = "insert into Signal(Instrument,Signal,Time,BuyAt,Target) values(?,?,?,?,?);"
+            cursor.execute(qry ,(int(ohlc["instrument_token"].iloc[-1]),"BUY",datetime.strptime(str(ohlc.index[-1]),'%Y-%m-%d %H:%M:%S'),ohlc["close"].iloc[-1],ohlc["close"].iloc[-1]+(atr*1.5)))
+            con.sqlit.commit()
+            signal = 'Buy'
+        if downward_sma_dir == 'True':
+            qry = "insert into Signal(Instrument,Signal,Time,BuyAt,Target) values(?,?,?,?,?);"
+            cursor.execute(qry ,(int(ohlc["instrument_token"].iloc[-1]),"SELL",datetime.strptime(str(ohlc.index[-1]), '%Y-%m-%d %H:%M:%S'),ohlc["close"].iloc[-1],ohlc["close"].iloc[-1]-(atr*1.5)))
+            con.sqlit.commit() 
+            signal = 'Sell'
+    except:
+        pass        
     return  signal 
 
 
