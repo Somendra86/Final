@@ -11,7 +11,7 @@ import sys
 
 kws = ""
 kite = ""
-cwd = os.chdir("C:/Final")
+cwd = os.chdir("F:/Final")
 #generate trading session
 access_token = open("access_token.txt",'r').read()
 key_secret = open("api_key.txt",'r').read().split()

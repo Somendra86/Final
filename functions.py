@@ -2,6 +2,7 @@ import pandas as pd
 import datetime as dt
 import Connection as con
 import numpy as np
+import datetime
 from datetime import datetime 
 from kiteconnect import KiteConnect
 
@@ -115,9 +116,42 @@ def EmaCrossOver(ohlc):
         con.sqlit.commit() 
         signal = 'Sell'
     return  signal  
-               
 
+def isholiday(date):
+    HolidayList = pd.read_csv("HolidayList.csv")
+    HolidayList = HolidayList["Date"].tolist()
+    if (date in HolidayList):
+        return "True"
+    else :
+        return "False"   
 
+def placeBracketOrder(symbol,buy_sell,quantity,atr,price):    
+    # Place an intraday market order on NSE
+    if buy_sell == "buy":
+        t_type=kite.TRANSACTION_TYPE_BUY
+    elif buy_sell == "sell":
+        t_type=kite.TRANSACTION_TYPE_SELL
+    kite.place_order(tradingsymbol=symbol,
+                    exchange=kite.EXCHANGE_NSE,
+                    transaction_type=t_type,
+                    quantity=quantity,
+                    order_type=kite.ORDER_TYPE_LIMIT,
+                    price=price, #BO has to be a limit order, set a low price threshold
+                    product=kite.PRODUCT_MIS,
+                    variety=kite.VARIETY_BO,
+                    squareoff=int(1.5*atr), 
+                    stoploss=int(3*atr), 
+                    trailing_stoploss=1.5)
+
+def atr(DF,n):
+    "function to calculate True Range and Average True Range"
+    df = DF.copy()
+    df['H-L']=abs(df['high']-df['low'])
+    df['H-PC']=abs(df['high']-df['close'].shift(1))
+    df['L-PC']=abs(df['low']-df['close'].shift(1))
+    df['TR']=df[['H-L','H-PC','L-PC']].max(axis=1,skipna=False)
+    df['ATR'] = df['TR'].ewm(com=n,min_periods=n).mean()
+    return df['ATR'][-1]
 
     
 

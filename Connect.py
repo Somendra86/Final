@@ -10,7 +10,7 @@ import time
 import os
 
 
-cwd = os.chdir("C:/Final/")
+cwd = os.chdir("F:/Final/")
 def autologin():
     token_path = "api_key.txt"
     key_secret = open(token_path,'r').read().split()
