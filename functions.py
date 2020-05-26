@@ -80,7 +80,7 @@ def atr(DF,n):
 def fetchOHLC(ticker,interval):
     """extracts historical data and outputs in the form of dataframe"""
     instrument = getInstrumentNum(ticker)
-    query = 'SELECT Date,instrument_token,last_price FROM PORTFOLIO where instrument_token = '+str(instrument) +' order by Date'
+    query = 'SELECT Date,instrument_token,last_price FROM PORTFOLIO where instrument_token = '+str(instrument) +' and Date(date) >= DATE(''now'',''-3 day'') order by Date'
     df = pd.read_sql(query, con.sqlit , parse_dates = "Date")
     df.set_index("Date",inplace=True)
     ohlc = df["last_price"].resample(str(interval)+'Min').ohlc().dropna(how='any')
@@ -244,4 +244,6 @@ def SuperTrendRSI(ohlc):
         pass        
     return  signal 
 
-
+def find200EMA(ohlc):
+    ohlc["200EMA"]=round(ohlc["close"].ewm(span=200,min_periods=200).mean(),2)
+    return ohlc['200EMA'][-1]
