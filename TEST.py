@@ -51,14 +51,12 @@ new_csv = csv.rename(columns = {'SYMBOL \n' : "SYMBOL", 'PREV. CLOSE \n' :"PREV.
 tot =  new_csv["%CHNG"].sum()
 print(round(tot,2))
 if(tot < 0):
-    new_csv = new_csv[new_csv["%CHNG"]<-.9]
-    new_csv = new_csv[new_csv["%CHNG"]>=-1.5]
-    new_csv = new_csv[new_csv["FINAL QUANTITY"]>20000]
+    new_csv = new_csv[new_csv["%CHNG"]<-1.8]
+    new_csv["Signal"] = "Find Buying Oppertunity -- LTP > VWAP and RSI > 50"
     new_csv=new_csv.drop(columns=["PREV. CLOSE","IEP  PRICE","CHNG","FINAL PRICE","FINAL QUANTITY","VALUE","FFM CAP","NM 52W H","NM 52W L"])
 elif (tot > 0):
-    new_csv = new_csv[new_csv["%CHNG"]>.9]
-    new_csv = new_csv[new_csv["%CHNG"]<=1.5]
-    new_csv = new_csv[new_csv["FINAL QUANTITY"]>20000]
+    new_csv = new_csv[new_csv["%CHNG"]>1.9]
+    new_csv["Signal"] = "Find Selling Oppertunity -- LTP < VWAP and RSI < 50"
     new_csv=new_csv.drop(columns=["PREV. CLOSE","IEP  PRICE","CHNG","FINAL PRICE","FINAL QUANTITY","VALUE","FFM CAP","NM 52W H","NM 52W L"])
 print(new_csv)
 
